@@ -11,7 +11,11 @@
         label { display: block; margin: 5px 0; }
         button { display: block; margin: 20px auto; padding: 10px 20px; }
         #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+        #screenshot-preview { margin-top: 20px; text-align: center; }
+        #screenshot-preview img { max-width: 100%; }
     </style>
+    <!-- 引入 html2canvas 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <h1>职业素养评估问卷</h1>
@@ -98,23 +102,30 @@
             <label><input type="radio" name="q10" value="D"> D. 尽量减少参与，保持低调以降低责任。</label>
         </div>
         
-        <button type="submit">提交问卷</button>
+        <button type="button" id="calculateScore">计算得分并生成截图</button>
     </form>
     
     <div id="result"></div>
+    <div id="screenshot-preview"></div>
     
     <script>
-        document.getElementById('surveyForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
+        document.getElementById('calculateScore').addEventListener('click', function() {
+            const formData = new FormData(document.getElementById('surveyForm'));
             let score = 0;
-            const answers = ['C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C']; // 理想答案均为C
+            const answers = ['C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'];
+            
             for (let i = 1; i <= 10; i++) {
                 const selected = formData.get(`q${i}`);
+                if (!selected) {
+                    alert('请确保每题都选择了答案！');
+                    return;
+                }
                 if (selected === answers[i-1]) {
                     score++;
                 }
             }
+            
+            // 显示得分
             const percentage = (score / 10) * 100;
             let resultText = '';
             if (percentage >= 80) {
@@ -127,6 +138,39 @@
                 resultText = '需改进：请多练习专业处理职场问题。';
             }
             document.getElementById('result').innerHTML = `<h3>您的得分：${score}/10 (${percentage}%)</h3><p>${resultText}</p>`;
+            
+            // 禁用按钮，防止重复点击
+            this.disabled = true;
+            
+            // 生成页面截图
+            html2canvas(document.body, {
+                scale: 2, // 提高分辨率
+                useCORS: true,
+                width: document.body.scrollWidth,
+                height: document.body.scrollHeight
+            }).then(canvas => {
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.style.maxWidth = '100%';
+                document.getElementById('screenshot-preview').innerHTML = '<h3>问卷截图预览</h3>';
+                document.getElementById('screenshot-preview').appendChild(img);
+                
+                // 提供下载链接
+                const downloadLink = document.createElement('a');
+                downloadLink.href = img.src;
+                downloadLink.download = '问卷调查结果.png';
+                downloadLink.innerText = '下载截图';
+                downloadLink.style.display = 'block';
+                downloadLink.style.marginTop = '10px';
+                document.getElementById('screenshot-preview').appendChild(downloadLink);
+                
+                // 重新启用按钮
+                document.getElementById('calculateScore').disabled = false;
+            }).catch(err => {
+                console.error('截图失败:', err);
+                alert('生成截图失败，请稍后重试！');
+                document.getElementById('calculateScore').disabled = false;
+            });
         });
     </script>
 </body>
